@@ -1,0 +1,42 @@
+version: '3.4'
+
+services:
+  reverse-proxy:
+    restart: always
+    image: traefik:v2.2
+    container_name: traefik
+    ports:
+      - 443:443
+      - 8080:8080
+      - 8082:8082
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./traefik.toml:/etc/traefik/traefik.toml
+      - ./dynamic_conf.toml:/etc/traefik/dynamic_conf.toml
+    labels:
+      - "traefik.enable=true"
+    networks:
+      - proxy
+
+  auth-server:
+    restart: always
+    image: docker.pkg.github.com/reugn/auth-server/auth-server:0.1.0
+    container_name: auth-server
+    ports:
+      - 8081:8081
+    command: "-proxy=traefik -repo=aerospike"
+    environment:
+      - AUTH_SERVER_AEROSPIKE_HOST=localhost
+      - AUTH_SERVER_AEROSPIKE_PORT=3000
+      - AUTH_SERVER_AEROSPIKE_NAMESPACE=auth
+      - AUTH_SERVER_AEROSPIKE_SETNAME=
+      - AUTH_SERVER_AEROSPIKE_BASIC_KEY=basic
+      - AUTH_SERVER_AEROSPIKE_AUTHORIZATION_KEY=authorization
+    labels:
+      - "traefik.enable=true"
+    networks:
+      - proxy
+
+networks:
+  proxy:
+    external: true
